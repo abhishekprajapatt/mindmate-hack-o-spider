@@ -1,0 +1,224 @@
+# MindMate System Architecture
+
+## High-Level Architecture Diagram
+
+┌─────────────────────────────────────────────────────────────────┐
+│                        USER INTERFACE LAYER                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────┐    ┌─────────────────┐                    │
+│  │   Streamlit     │    │   Web Browser   │                    │
+│  │   Frontend      │◄──►│   (Port 8501)   │                    │
+│  │                 │    │                 │                    │
+│  │ - Chat UI       │    │ - User Input    │                    │
+│  │ - Safety Info   │    │ - Message Display│                    │
+│  │ - Quick Actions │    │ - Resource Links │                    │
+│  │ - Resources     │    │ - Responsive UI  │                    │
+│  └─────────────────┘    └─────────────────┘                    │
+│           │                       │                             │
+└───────────┼───────────────────────┼─────────────────────────────┘
+            │                       │
+            │ HTTP POST /chat       │
+            │                       │
+┌───────────▼───────────────────────▼─────────────────────────────┐
+│                      API GATEWAY LAYER                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                FastAPI Backend                          │    │
+│  │                (Port 8000)                              │    │
+│  │                                                         │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │    │
+│  │  │   main.py   │  │  Routing    │  │   CORS      │      │    │
+│  │  │             │  │             │  │ Middleware  │      │    │
+│  │  │ - /chat     │  │ - /health   │  │             │      │    │
+│  │  │ - /convos   │  │ - /docs     │  │ - Origins   │      │    │
+│  │  │ - Error     │  │ - /stats    │  │ - Methods   │      │    │
+│  │  │   Handling  │  │             │  │ - Headers   │      │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘      │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│           │                  │                  │               │
+└───────────┼──────────────────┼──────────────────┼───────────────┘
+            │                  │                  │
+            │                  │                  │
+┌───────────▼──────────────────▼──────────────────▼───────────────┐
+│                    BUSINESS LOGIC LAYER                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │   nlp.py    │  │ llm_client  │  │  safety.py  │              │
+│  │             │  │    .py      │  │             │              │
+│  │ - Sentiment │  │             │  │ - Crisis    │              │
+│  │   Analysis  │  │ - OpenAI    │  │   Detection │              │
+│  │ - Google    │  │ - Gemini    │  │ - Keywords  │              │
+│  │   Cloud NLP │  │ - Claude    │  │ - Escalation│              │
+│  │ - Hugging   │  │ - System    │  │ - Safety    │              │
+│  │   Face      │  │   Prompts   │  │   Messages  │              │
+│  │ - Fallback  │  │ - Context   │  │ - Resources │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│           │                  │                  │               │
+│           │                  │                  │               │
+│  ┌─────────────┐              │              ┌─────────────┐    │
+│  │    db.py    │              │              │ Conversation│    │
+│  │             │              │              │  Management │    │
+│  │ - SQLite    │              │              │             │    │
+│  │ - Async     │              │              │ - History   │    │
+│  │ - Anonymized│              │              │ - Context   │    │
+│  │ - Logging   │              │              │ - Memory    │    │
+│  │ - Analytics │              │              │   Limits    │    │
+│  └─────────────┘              │              └─────────────┘    │
+│           │                   │                        │        │
+└───────────┼───────────────────┼────────────────────────┼────────┘
+            │                   │                        │
+            │                   │                        │
+┌───────────▼───────────────────▼────────────────────────▼────────┐
+│                    EXTERNAL SERVICES LAYER                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │   OpenAI    │  │   Google    │  │  Anthropic  │              │
+│  │             │  │             │  │             │              │
+│  │ - GPT-3.5   │  │ - Gemini    │  │ - Claude    │              │
+│  │ - GPT-4     │  │ - Cloud NLP │  │ - Haiku     │              │
+│  │ - Chat API  │  │ - Sentiment │  │ - API       │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ HuggingFace │  │   SQLite    │  │   Crisis    │              │
+│  │             │  │             │  │  Services   │              │
+│  │ - DistilBERT│  │ - Local DB  │  │             │              │
+│  │ - Sentiment │  │ - File      │  │ - 988 Line  │              │
+│  │ - Fallback  │  │   Storage   │  │ - 911 Info  │              │
+│  │ - Offline   │  │ - Async     │  │ - Text Line │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+
+## Data Flow Architecture
+
+1. USER INPUT
+   ├── User types message in Streamlit UI
+   ├── Message sent via HTTP POST to /chat endpoint
+   └── Request includes: message, conversation_id, user_id (anonymous)
+
+2. REQUEST PROCESSING
+   ├── FastAPI receives request and validates input
+   ├── Retrieves/creates conversation history
+   ├── Limits context to last 6 messages (3 exchanges)
+   └── Routes to business logic layer
+
+3. SENTIMENT ANALYSIS
+   ├── Primary: Google Cloud Natural Language API
+   │   ├── Document sentiment scoring (-1.0 to 1.0)
+   │   ├── Magnitude calculation (emotional intensity)
+   │   └── Confidence scoring
+   └── Fallback: HuggingFace DistilBERT
+       ├── POSITIVE/NEGATIVE classification
+       ├── Score conversion to consistent scale
+       └── Local processing (no external API)
+
+4. CRISIS DETECTION
+   ├── Regex pattern matching for high-risk keywords
+   │   ├── Suicide ideation: "kill myself", "end my life"
+   │   ├── Self-harm: "cut myself", "hurt myself"
+   │   └── Immediate danger: "tonight", "ready to die"
+   ├── Contextual analysis for phrase combinations
+   ├── Immediate escalation if crisis detected
+   └── Crisis response bypasses normal LLM processing
+
+5. LLM RESPONSE GENERATION (if no crisis)
+   ├── Context building with conversation history
+   ├── Sentiment integration for response tuning
+   ├── Primary LLM selection (OpenAI → Anthropic → Gemini)
+   ├── System prompt injection for safety guidelines
+   ├── Response length limiting (120 words max)
+   └── Fallback responses if all LLMs fail
+
+6. RESPONSE PROCESSING
+   ├── Add assistant message to conversation history
+   ├── Generate appropriate resource recommendations
+   ├── Log anonymized interaction data (if enabled)
+   └── Package response with metadata
+
+7. CLIENT RESPONSE
+   ├── JSON response with message, sentiment, crisis status
+   ├── Resource links and safety information
+   ├── Frontend displays formatted response
+   └── UI updates with new message history
+
+## Security & Safety Architecture
+
+### Input Validation Layer
+┌─────────────────────────────────────────┐
+│ - Message length limits (2000 chars)    │
+│ - Content filtering (spam, inappropriate)│
+│ - Rate limiting (future enhancement)     │
+│ - Input sanitization                     │
+└─────────────────────────────────────────┘
+
+### Crisis Detection Pipeline
+┌─────────────────────────────────────────┐
+│ 1. Keyword Pattern Matching             │
+│ 2. Contextual Phrase Analysis           │
+│ 3. Sentiment Severity Assessment        │
+│ 4. Immediate Escalation Protocol        │
+│ 5. Crisis Resource Delivery             │
+└─────────────────────────────────────────┘
+
+### Privacy Protection Layer
+┌─────────────────────────────────────────┐
+│ - No personal identifiers stored        │
+│ - Conversation ID anonymization         │
+│ - Automatic data cleanup (30 days)      │
+│ - Encrypted data transmission (HTTPS)   │
+│ - GDPR-compliant logging               │
+└─────────────────────────────────────────┘
+
+## Deployment Architecture
+
+### Development Environment
+├── Local Development
+│   ├── Backend: uvicorn (localhost:8000)
+│   ├── Frontend: streamlit (localhost:8501)
+│   ├── Database: SQLite (local file)
+│   └── APIs: Direct external service calls
+
+### Production Readiness Features
+├── Health Check Endpoints
+├── Logging & Monitoring
+├── Error Recovery & Fallbacks
+├── Environment-based Configuration
+├── Database Migration Support
+├── Horizontal Scaling Capabilities
+└── Load Balancer Compatibility
+
+## Technology Stack Summary
+
+### Frontend Technologies
+- **Streamlit**: Interactive web application framework
+- **Python**: Core programming language
+- **HTML/CSS**: Custom styling and layout
+- **JavaScript**: Browser-side interactions
+
+### Backend Technologies  
+- **FastAPI**: Modern Python web framework
+- **Uvicorn**: ASGI server for high performance
+- **Pydantic**: Data validation and serialization
+- **AsyncIO**: Asynchronous request handling
+- **SQLAlchemy**: Database ORM (with aiosqlite)
+
+### AI/ML Technologies
+- **OpenAI GPT**: Primary language model
+- **Google Gemini**: Alternative language model  
+- **Anthropic Claude**: Alternative language model
+- **Google Cloud NLP**: Primary sentiment analysis
+- **HuggingFace Transformers**: Fallback sentiment analysis
+- **DistilBERT**: Offline sentiment classification
+
+### Infrastructure Technologies
+- **Docker**: Containerization platform
+- **Docker Compose**: Multi-container orchestration
+- **SQLite**: Embedded database for logging
+- **HTTPS/TLS**: Secure data transmission
+- **RESTful APIs**: Service communication protocol
+
+This architecture ensures scalability, reliability, safety, and maintainability while providing a seamless user experience for mental health support conversations.

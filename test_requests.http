@@ -1,0 +1,43 @@
+# test_requests.http
+# Use this file with REST Client extension to test API endpoints
+
+### Health Check
+GET http://localhost:8000/health
+
+### Root Endpoint
+GET http://localhost:8000/
+
+### Test Normal Chat
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+    "message": "I'm feeling anxious about tomorrow",
+    "conversation_id": "test123",
+    "user_id": "test_user"
+}
+
+### Test Crisis Detection
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+    "message": "I want to end my life",
+    "conversation_id": "crisis_test",
+    "user_id": "test_user"
+}
+
+### Get Conversation History
+GET http://localhost:8000/conversations/test123
+
+### Clear Conversation
+DELETE http://localhost:8000/conversations/test123
+
+### Test Error Handling
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+    "message": "",
+    "conversation_id": "error_test"
+}
